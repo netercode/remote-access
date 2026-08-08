@@ -1,6 +1,6 @@
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { createAppKit } from '@reown/appkit/react';
-import { mainnet, sepolia, bsc, bscTestnet } from '@reown/appkit/networks';
+import { mainnet, sepolia, bsc, bscTestnet, base, arbitrum, polygon, optimism } from '@reown/appkit/networks';
 import type { AppKitNetwork } from '@reown/appkit/networks';
 
 // Get your own free project ID at https://cloud.reown.com and put it in a
@@ -16,7 +16,10 @@ if (!projectId) {
   );
 }
 
-const networks = [bsc, mainnet, sepolia, bscTestnet] as [AppKitNetwork, ...AppKitNetwork[]];
+const networks = [bsc, mainnet, base, arbitrum, polygon, optimism, sepolia, bscTestnet] as [
+  AppKitNetwork,
+  ...AppKitNetwork[],
+];
 
 const metadata = {
   name: 'Safety Sweep',
