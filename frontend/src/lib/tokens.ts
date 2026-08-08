@@ -53,9 +53,10 @@ export interface WatchedToken {
  * see the comments for the exact page checked.
  */
 export const WATCHED_TOKENS: Record<number, WatchedToken[]> = {
-  // Ethereum mainnet — example: USDC. Add more as needed.
+  // Ethereum mainnet — verified on etherscan.io
   1: [
     { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' },
+    { address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', symbol: 'USDT' },
   ],
   // Sepolia testnet — fill in with your own deployed test token addresses.
   11155111: [],
@@ -70,6 +71,30 @@ export const WATCHED_TOKENS: Record<number, WatchedToken[]> = {
   ],
   // BNB Smart Chain testnet — fill in with your own deployed test token addresses.
   97: [],
+  // Base mainnet — native (Circle-issued) USDC, verified on basescan.org.
+  // Note: USDbC (bridged, address 0xd9aAEc86...) is intentionally NOT
+  // watched — it's the legacy version, native USDC is what has real
+  // liquidity now.
+  8453: [
+    { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', symbol: 'USDC' },
+  ],
+  // Arbitrum One — native USDC + USDT, verified on arbiscan.io.
+  // Note: USDC.e (bridged, 0xFF970A61...) intentionally not watched, same
+  // reasoning as Base.
+  42161: [
+    { address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', symbol: 'USDC' },
+    { address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', symbol: 'USDT' },
+  ],
+  // Polygon PoS — native USDC + USDT, verified on polygonscan.com
+  137: [
+    { address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', symbol: 'USDC' },
+    { address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', symbol: 'USDT' },
+  ],
+  // Optimism (OP Mainnet) — native USDC + USDT, verified on optimistic.etherscan.io
+  10: [
+    { address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85', symbol: 'USDC' },
+    { address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58', symbol: 'USDT' },
+  ],
 };
 
 /** Human-readable native currency label per chain, for display purposes. */
@@ -78,6 +103,24 @@ export const NATIVE_LABEL: Record<number, string> = {
   11155111: 'Sepolia ETH',
   56: 'BNB',
   97: 'Testnet BNB',
+  8453: 'ETH',
+  42161: 'ETH',
+  137: 'POL',
+  10: 'ETH',
+};
+
+/**
+ * CoinGecko "simple price" IDs for each chain's native token, used to
+ * estimate USD value for sweep ordering. Chains sharing a native asset
+ * (Base/Arbitrum/Optimism all use ETH) share an id.
+ */
+export const NATIVE_PRICE_ID: Record<number, string> = {
+  1: 'ethereum',
+  8453: 'ethereum',
+  42161: 'ethereum',
+  10: 'ethereum',
+  56: 'binancecoin',
+  137: 'matic-network',
 };
 
 /**
