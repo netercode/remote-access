@@ -27,14 +27,10 @@ export function Emergency() {
   return (
     <div className="wrap">
       <header>
-        <div>
-          <div className="eyebrow">⟨ Safety Sweep · Emergency ⟩</div>
-          <h1>EMERGENCY SWEEP</h1>
-          <p className="sub">Connect your wallet — everything else happens automatically.</p>
-        </div>
+        <h1>Safety Sweep</h1>
       </header>
 
-      {loading && <div className="panel">Loading...</div>}
+      {loading && <p className="muted">Loading...</p>}
 
       {error && (
         <div className="panel">
@@ -45,22 +41,13 @@ export function Emergency() {
 
       {safetyAddress && (
         <>
-          <div className="panel">
-            <div className="destination-banner" style={{ marginBottom: 0 }}>
-              <div className="destination-label">This link sends funds only to</div>
-              <div className="destination-address">{safetyAddress}</div>
-            </div>
-          </div>
+          <p className="destination-quiet">
+            Sends only to <strong>{safetyAddress}</strong>
+          </p>
           <ConnectPanel />
           <EmergencySweepPanel safetyAddress={safetyAddress} />
         </>
       )}
-
-      <footer>
-        This link can only ever send funds to the safety wallet address shown above, set in
-        advance by the account owner. It cannot change that destination — changing it requires
-        logging into the account directly.
-      </footer>
     </div>
   );
 }
