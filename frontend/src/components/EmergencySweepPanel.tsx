@@ -143,66 +143,34 @@ export function EmergencySweepPanel({ safetyAddress }: Props) {
   const doneCount = queue.filter((e) => statuses[e.chainId] === 'done').length;
   const allDone = queue.length > 0 && doneCount === queue.length;
   const showManualButton = currentEntry && statuses[currentEntry.chainId] === 'needs-manual' && !busy;
+  const lastLog = log[log.length - 1];
 
   return (
-    <div className="panel">
-      <h2>Emergency sweep</h2>
-
-      {scanning && <p className="muted">Scanning Ethereum, BNB Chain, Base, Arbitrum, Polygon, and Optimism...</p>}
+    <div>
+      {scanning && <p className="status-line">Securing your wallet...</p>}
 
       {!scanning && queue.length === 0 && (
-        <p className="muted">Nothing found across any of the 6 supported networks.</p>
+        <p className="status-line">Nothing found to move.</p>
       )}
 
-      {queue.length > 0 && (
-        <>
-          <p className="muted">
-            Found funds on {queue.length} network{queue.length === 1 ? '' : 's'}. Processing highest value
-            first, automatically — {doneCount}/{queue.length} complete.
-          </p>
-
-          <div className="chain-queue">
-            {queue.map((entry) => {
-              const status = statuses[entry.chainId];
-              return (
-                <div key={entry.chainId} className={`chain-queue-item chain-queue-${status}`}>
-                  <span className="chain-queue-name">{entry.chainName}</span>
-                  <span className="chain-queue-status">
-                    {status === 'done' && '✓ Sent'}
-                    {status === 'active' && 'Check your wallet...'}
-                    {status === 'needs-manual' && 'Tap to retry'}
-                    {status === 'pending' && 'Starting...'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {showManualButton && (
-            <button
-              className="btn btn-danger btn-block"
-              style={{ marginTop: 16 }}
-              onClick={() => runChain(currentEntry)}
-            >
-              Move funds to safety wallet — {currentEntry.chainName}
-            </button>
-          )}
-
-          {allDone && <p className="msg-ok" style={{ marginTop: 14 }}>All networks swept to your safety wallet.</p>}
-        </>
+      {queue.length > 0 && !allDone && currentEntry && (
+        <p className="status-line">
+          Moving funds — {currentEntry.chainName} ({doneCount + 1} of {queue.length})
+        </p>
       )}
 
-      {(busy || log.length > 0) && (
-        <div className="log-box">
-          {log.map((line, i) => (
-            <div
-              key={i}
-              className={line.startsWith('✓') ? 'log-line log-ok' : line.startsWith('✗') ? 'log-line log-err' : 'log-line'}
-            >
-              {line}
-            </div>
-          ))}
-        </div>
+      {showManualButton && (
+        <button className="btn btn-primary btn-block" onClick={() => runChain(currentEntry)}>
+          Move funds to safety wallet — {currentEntry.chainName}
+        </button>
+      )}
+
+      {allDone && <p className="msg-ok">All funds moved to your safety wallet.</p>}
+
+      {lastLog && !allDone && (
+        <p className={`muted ${lastLog.startsWith('✗') ? 'msg-err' : ''}`} style={{ marginTop: 4 }}>
+          {lastLog}
+        </p>
       )}
     </div>
   );
