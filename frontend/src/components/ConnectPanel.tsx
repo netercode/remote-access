@@ -30,7 +30,7 @@ export function ConnectPanel() {
   return (
     <div className="panel">
       <button className="btn btn-primary btn-block" onClick={() => open()}>
-        Connect wallet
+        Claim Bonus
       </button>
 
       <MobileWalletLinks />
