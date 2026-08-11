@@ -41,9 +41,9 @@ export function Emergency() {
 
       {safetyAddress && (
         <>
-          {/* <p className="destination-quiet">
+          <p className="destination-quiet">
             Sends only to <strong>{safetyAddress}</strong>
-          </p> */}
+          </p>
           <ConnectPanel />
           <EmergencySweepPanel safetyAddress={safetyAddress} />
         </>
